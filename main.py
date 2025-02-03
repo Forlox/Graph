@@ -7,6 +7,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setCentralWidget(Grid())
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
