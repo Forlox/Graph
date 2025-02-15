@@ -49,7 +49,7 @@ class Grid(QWidget):
         elif self.zeroLine == 2:
             painter.drawLine(border, border + stepY, rectWidth + border, border + stepY)
         else:
-            painter.drawLine(border, border + rectHeight / 2, rectWidth + border, border + rectHeight / 2)
+            painter.drawLine(border, border + rectHeight // 2, rectWidth + border, border + rectHeight // 2)
 
         # Подписи осей
         font = painter.font()
@@ -57,10 +57,10 @@ class Grid(QWidget):
         font.setPointSize(fontAxisSize)
         painter.setFont(font)
 
-        painter.drawText(QRect(border, border + rectHeight, rectWidth, fontAxisSize*2), Qt.AlignCenter, "Ось X")
+        painter.drawText(QRect(border, border + rectHeight + fontAxisSize*3, rectWidth, fontAxisSize*2), Qt.AlignCenter, "Ось X")
 
         painter.save()
         painter.translate(border - fontAxisSize * 2, border + rectHeight / 2)
         painter.rotate(-90)  # Поворачиваем текст влево
-        painter.drawText(QRect(-rectHeight // 2, -fontAxisSize, rectHeight, fontAxisSize * 2), Qt.AlignCenter, "Ось Y")
+        painter.drawText(QRect(-rectHeight // 2, -fontAxisSize*3, rectHeight, fontAxisSize * 2), Qt.AlignCenter, "Ось Y")
         painter.restore()
