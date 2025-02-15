@@ -3,8 +3,10 @@ from PySide6.QtGui import QPainter, QPen
 from PySide6.QtCore import Qt, QRect
 
 class Grid(QWidget):
-    def __init__(self):
+    def __init__(self, countOfDiagrams, zeroLine):
         super().__init__()
+        self.countOfDiagrams = countOfDiagrams
+        self.zeroLine = zeroLine
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -13,39 +15,39 @@ class Grid(QWidget):
 
         ### Параметры ###
         border = 60
-        step = 60
+        stepX = self.width() // 5  # Шаг по оси X
+        stepY = 60
         ##############
 
         # Прямоугольник
-        rectWidth = ((self.width() - 2 * border) // step) * step
-        rectHeight = ((self.height() - 2 * border) // step) * step
+        rectWidth = self.countOfDiagrams * stepX
+        rectHeight = ((self.height() - 2 * border) // stepY) * stepY
 
-        zeroLine = 1  # 1,2 - нулевая линия снизу, сверху; остальные числа, 0 - посередине
-
-        if (rectHeight // step) % 2 == 1 and zeroLine==0:
-            rectHeight -= step
+        if (rectHeight // stepY) % 2 == 1 and self.zeroLine != 1 and self.zeroLine != 2:
+            rectHeight -= stepY
 
         painter.drawRect(border, border, rectWidth, rectHeight)
 
-        # Сетка
+        # Сетка по оси X
         pen.setWidth(1)
         pen.setStyle(Qt.DashDotLine)
         painter.setPen(pen)
 
-        for x in range(border + step, border + rectWidth, step):
+        for x in range(border + stepX, border + rectWidth, stepX):
             painter.drawLine(x, border, x, border + rectHeight)
 
-        for y in range(border + step, border + rectHeight, step):
+        # Сетка по оси Y
+        for y in range(border + stepY, border + rectHeight, stepY):
             painter.drawLine(border, y, border + rectWidth, y)
 
         # Нулевая линия
         pen.setWidth(2)
         pen.setStyle(Qt.SolidLine)
         painter.setPen(pen)
-        if zeroLine == 1:
-            painter.drawLine(border, border + rectHeight - step, rectWidth + border, border + rectHeight - step)
-        elif zeroLine == 2:
-            painter.drawLine(border, border + step, rectWidth + border, border + step)
+        if self.zeroLine == 1:
+            painter.drawLine(border, border + rectHeight - stepY, rectWidth + border, border + rectHeight - stepY)
+        elif self.zeroLine == 2:
+            painter.drawLine(border, border + stepY, rectWidth + border, border + stepY)
         else:
             painter.drawLine(border, border + rectHeight / 2, rectWidth + border, border + rectHeight / 2)
 
