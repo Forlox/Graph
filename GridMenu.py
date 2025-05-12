@@ -17,14 +17,14 @@ class GridMenu(QWidget):
         self.layout.addWidget(points_label)
 
         self.points_input = QLineEdit("1, 2, 3")
-        self.points_input.textChanged.connect(self._emit_points)
+        self.points_input.textChanged.connect(self.emit_points)
         self.layout.addWidget(self.points_input)
 
         step_label = QLabel("Шаг сетки по Y:")
         self.layout.addWidget(step_label)
 
         self.step_input = QLineEdit("1")
-        self.step_input.textChanged.connect(self._emit_step)
+        self.step_input.textChanged.connect(self.emit_step)
         self.layout.addWidget(self.step_input)
 
         legend_label = QLabel("Легенда:")
@@ -58,10 +58,10 @@ class GridMenu(QWidget):
 
         self.legend_text.setText("<br>".join(legendLines))
 
-    def _emit_points(self, text):
+    def emit_points(self, text):
         self.pointsChanged.emit(text)
 
-    def _emit_step(self, text):
+    def emit_step(self, text):
         try:
             step = text.replace('pi', str(math.pi)).replace('e', str(math.e))
             self.stepYChanged.emit(float(eval(step)))

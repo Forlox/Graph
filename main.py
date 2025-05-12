@@ -9,9 +9,9 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         mainLay = QHBoxLayout()
-        # mainLay.setContentsMargins(0, 0, 0, 0)
+        mainLay.setContentsMargins(5, 5, 5, 5)
 
-        self.grid = Grid(countOfDiagrams=3, zeroLine=0)
+        self.grid = Grid()
         self.menu = GridMenu(self.grid)
         self.menu.setFixedWidth(300)
 
@@ -19,17 +19,24 @@ class MainWindow(QMainWindow):
         self.menu.pointsChanged.connect(self.grid.setPoints)
         self.grid.pointsProcessed.connect(self.menu.updateLegend)
 
+        # Обновляем размер окна при изменении точек
+        self.grid.pointsProcessed.connect(self.adjustWindowSize)
+
         mainLay.addWidget(self.grid)
         mainLay.addWidget(self.menu)
 
         container = QWidget()
         container.setLayout(mainLay)
         self.setCentralWidget(container)
+        self.adjustWindowSize()
+
+    def adjustWindowSize(self):
+        self.resize(self.grid.sizeHint().width() + 350, 600)  # 350 - место для меню + отступы
+        self.setMinimumSize(self.grid.minimumSizeHint().width() + 350, 400)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.setMinimumSize(800, 600)
     window.show()
     sys.exit(app.exec())
