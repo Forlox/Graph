@@ -69,33 +69,35 @@ class Grid(QWidget):
         return results
 
     def determine_bounds(self, results):
-        allValues = []
-        for point in results:
-            positiveSum = 0
-            negativeSum = 0
-            for val in point:
+        if not results or not any(results):
+            return 10, -10  # Значения по умолчанию, если нет данных
+
+        # Считаем суммы положительных и отрицательных значений для каждой точки
+        point_sums = []
+        for point_results in results:
+            positive_sum = 0
+            negative_sum = 0
+            for val in point_results:
                 if val is not None:
                     if val > 0:
-                        positiveSum += val
+                        positive_sum += val
                     else:
-                        negativeSum += val
-            if positiveSum != 0:
-                allValues.append(positiveSum)
-            if negativeSum != 0:
-                allValues.append(negativeSum)
+                        negative_sum += val
+            point_sums.append((positive_sum, negative_sum))
 
-        if not allValues or not results:
-            return 10, -10
+        # Находим максимальную положительную и минимальную отрицательную суммы
+        max_positive = max(ps[0] for ps in point_sums) if any(ps[0] > 0 for ps in point_sums) else 0
+        min_negative = min(ps[1] for ps in point_sums) if any(ps[1] < 0 for ps in point_sums) else 0
 
-        max_val = max(allValues) if any(v > 0 for v in allValues) else 0
-        min_val = min(allValues) if any(v < 0 for v in allValues) else 0
+        # Добавляем шаг сетки сверху и снизу
+        max_val = math.ceil((max_positive + self.stepY) / self.stepY) * self.stepY
+        min_val = math.floor((min_negative - self.stepY) / self.stepY) * self.stepY
 
-        if max_val > 0:
-            max_val = math.ceil(max_val / self.stepY) * self.stepY
-        if min_val < 0:
-            min_val = math.floor(min_val / self.stepY) * self.stepY
+        # Гарантируем минимальный диапазон, если все значения нулевые
+        if max_val == 0 and min_val == 0:
+            max_val, min_val = self.stepY, -self.stepY
 
-        return max(10, max_val), min(-10, min_val)
+        return max_val, min_val
 
     def sizeHint(self):
         width = self.border_left + self.border_right + len(self.points) * self.point_spacing
@@ -119,35 +121,99 @@ class Grid(QWidget):
         width = max(1, self.width() - self.border_left - self.border_right)
         height = max(1, self.height() - self.border_right - self.padding_top - self.padding_bottom)
 
-        zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
+        # Позиция нулевой линии
+        if self.maxY <= 0:
+            zero_y = self.padding_top
+        elif self.minY >= 0:
+            zero_y = self.padding_top + height
+        else:
+            zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
 
         painter.setPen(QPen(Qt.black, 2))
-        painter.drawRect(self.border_left, self.padding_top, width, height)
+        # Рисуем верхнюю границу
+        painter.drawLine(
+            self.border_left + self.perspective_depth,
+            self.padding_top - self.perspective_depth,
+            self.border_left + self.perspective_depth + width,
+            self.padding_top - self.perspective_depth
+        )
+
+        # Рисуем правую границу
+        painter.drawLine(
+            self.border_left + self.perspective_depth + width,
+            self.padding_top - self.perspective_depth,
+            self.border_left + self.perspective_depth + width,
+            self.padding_top - self.perspective_depth + height
+        )
+
+        # Линия от правого нижнего угла налево вниз
+        painter.drawLine(
+            self.border_left + self.perspective_depth + width,
+            self.padding_top - self.perspective_depth + height,
+            self.border_left + self.perspective_depth + width - self.perspective_depth,
+            self.padding_top - self.perspective_depth + height + self.perspective_depth
+        )
+
+        painter.drawLine(
+            self.border_left + self.perspective_depth + width - self.perspective_depth,
+            self.padding_top - self.perspective_depth + height + self.perspective_depth,
+            self.border_left,
+            self.padding_top - self.perspective_depth + height + self.perspective_depth
+        )
+
+        painter.drawLine(
+            self.border_left,
+            self.padding_top - self.perspective_depth + height + self.perspective_depth,
+            self.border_left,
+            self.padding_top
+        )
+
+        painter.drawLine(
+            self.border_left,
+            self.padding_top,
+            self.border_left + self.perspective_depth,
+            self.padding_top - self.perspective_depth
+        )
 
         pen = QPen(Qt.black, 1)
         pen.setStyle(Qt.DashLine)
         painter.setPen(pen)
 
-        y = zero_y
-        step = 0
-        while y >= self.padding_top:
-            painter.drawLine(self.border_left, y, self.border_left + width, y)
-            painter.drawText(10, y + 5, f"{step * self.stepY:.2f}")
-            step += 1
-            y = zero_y - step * (height / (self.maxY - self.minY)) * self.stepY
+        # Рисуем горизонтальные линии сетки выше нуля
+        if self.maxY > 0:
+            y = zero_y
+            step = 0
+            while y >= self.padding_top:
+                painter.drawLine(self.border_left + self.perspective_depth, y - self.perspective_depth,
+                                 self.border_left + width + self.perspective_depth, y - self.perspective_depth)
+                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, f"{step * self.stepY:.2f}")
+                step += 1
+                y = zero_y - step * (height / (self.maxY - self.minY)) * self.stepY
+                painter.drawLine(self.border_left, y, self.border_left + self.perspective_depth,
+                                 y - self.perspective_depth)
 
-        y = zero_y
-        step = 1
-        while y <= self.padding_top + height:
-            y = zero_y + step * (height / (self.maxY - self.minY)) * self.stepY
-            if y > self.padding_top + height:
-                break
-            painter.drawLine(self.border_left, y, self.border_left + width, y)
-            painter.drawText(10, y + 5, f"{-step * self.stepY:.2f}")
-            step += 1
+        # Рисуем горизонтальные линии сетки ниже нуля
+        if self.minY < 0:
+            y = zero_y
+            step = 1
+            while y <= self.padding_top + height:
+                y = zero_y + step * (height / (self.maxY - self.minY)) * self.stepY
+                if y > self.padding_top + height:
+                    break
+                painter.drawLine(self.border_left + self.perspective_depth, y - self.perspective_depth,
+                                 self.border_left + width + self.perspective_depth, y - self.perspective_depth)
+                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, f"{-step * self.stepY:.2f}")
+                step += 1
+                painter.drawLine(self.border_left, y, self.border_left + self.perspective_depth,
+                                 y - self.perspective_depth)
 
-        painter.setPen(QPen(Qt.black, 2))
-        painter.drawLine(self.border_left, zero_y, self.border_left + width, zero_y)
+        # Нулевая линия (если есть и положительные и отрицательные значения)
+        if self.maxY > 0 and self.minY < 0:
+            painter.setPen(QPen(Qt.black, 2))
+            painter.drawLine(self.border_left + self.perspective_depth, zero_y - self.perspective_depth,
+                             self.border_left + width + self.perspective_depth, zero_y - self.perspective_depth)
+            painter.drawLine(self.border_left, zero_y, self.border_left + self.perspective_depth,
+                             zero_y - self.perspective_depth)
 
     def draw_functions(self, painter):
         results = self.calculate_functions()
@@ -156,9 +222,16 @@ class Grid(QWidget):
 
         width = max(1, self.width() - self.border_left - self.border_right)
         height = max(1, self.height() - self.border_right - self.padding_top - self.padding_bottom)
-        zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
 
-        px_per_unit_y = height / (self.maxY - self.minY)
+        # Позиция нулевой линии
+        if self.maxY <= 0:
+            zero_y = self.padding_top
+        elif self.minY >= 0:
+            zero_y = self.padding_top + height
+        else:
+            zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
+
+        px_per_unit_y = height / (self.maxY - self.minY) if (self.maxY - self.minY) != 0 else 0
         x_positions = [self.border_left + 30 + i * self.point_spacing for i in range(len(self.points))]
 
         for i, (point, x) in enumerate(zip(self.points, x_positions)):
@@ -175,8 +248,8 @@ class Grid(QWidget):
 
                 height_px = abs(value) * px_per_unit_y
                 color = func["color"]
-                darker_color = color.darker(120)  # Немного темнее основной цвет
-                much_darker_color = color.darker(150)  # Еще темнее для боковых граней
+                darker_color = color.darker(120)
+                much_darker_color = color.darker(150)
 
                 if value >= 0:
                     # Основной прямоугольник
