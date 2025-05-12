@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPainter, QPen, QColor, QBrush
-from PySide6.QtCore import Qt, QRect, Signal
+from PySide6.QtGui import QPainter, QPen, QColor, QBrush, QPolygon
+from PySide6.QtCore import Qt, QRect, Signal, QPoint
 import math
 
 
@@ -19,6 +19,7 @@ class Grid(QWidget):
         self.padding_top = 20
         self.padding_bottom = 40
         self.point_spacing = 60
+        self.perspective_depth = 10  # Глубина 3D эффекта
 
     @staticmethod
     def getFuncs():
@@ -44,7 +45,6 @@ class Grid(QWidget):
         self.pointsProcessed.emit()
         self.update()
         self.adjustSize()
-
 
     def setYStep(self, step):
         try:
@@ -90,7 +90,6 @@ class Grid(QWidget):
         max_val = max(allValues) if any(v > 0 for v in allValues) else 0
         min_val = min(allValues) if any(v < 0 for v in allValues) else 0
 
-        # Корректировка границ с учетом шага
         if max_val > 0:
             max_val = math.ceil(max_val / self.stepY) * self.stepY
         if min_val < 0:
@@ -122,16 +121,13 @@ class Grid(QWidget):
 
         zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
 
-        # Рисуем периметр
         painter.setPen(QPen(Qt.black, 2))
         painter.drawRect(self.border_left, self.padding_top, width, height)
 
-        # Линии сетки и подписи
         pen = QPen(Qt.black, 1)
         pen.setStyle(Qt.DashLine)
         painter.setPen(pen)
 
-        # Вверх от нуля
         y = zero_y
         step = 0
         while y >= self.padding_top:
@@ -140,7 +136,6 @@ class Grid(QWidget):
             step += 1
             y = zero_y - step * (height / (self.maxY - self.minY)) * self.stepY
 
-        # Вниз от нуля
         y = zero_y
         step = 1
         while y <= self.padding_top + height:
@@ -151,7 +146,6 @@ class Grid(QWidget):
             painter.drawText(10, y + 5, f"{-step * self.stepY:.2f}")
             step += 1
 
-        # Нулевая линия
         painter.setPen(QPen(Qt.black, 2))
         painter.drawLine(self.border_left, zero_y, self.border_left + width, zero_y)
 
@@ -165,7 +159,6 @@ class Grid(QWidget):
         zero_y = self.padding_top + height * (self.maxY / (self.maxY - self.minY))
 
         px_per_unit_y = height / (self.maxY - self.minY)
-
         x_positions = [self.border_left + 30 + i * self.point_spacing for i in range(len(self.points))]
 
         for i, (point, x) in enumerate(zip(self.points, x_positions)):
@@ -182,17 +175,70 @@ class Grid(QWidget):
 
                 height_px = abs(value) * px_per_unit_y
                 color = func["color"]
+                darker_color = color.darker(120)  # Немного темнее основной цвет
+                much_darker_color = color.darker(150)  # Еще темнее для боковых граней
 
-                painter.setBrush(QBrush(color))
-                painter.setPen(QPen(color, 1))
+                if value >= 0:
+                    # Основной прямоугольник
+                    main_rect = QRect(x - 15, pos_y - height_px, 30, height_px)
 
-                if value > 0:
-                    rect = QRect(x - 15, pos_y - height_px, 30, height_px)
-                    painter.drawRect(rect)
+                    # Верхняя грань (параллелограмм)
+                    top_poly = QPolygon([
+                        QPoint(x - 15, pos_y - height_px),
+                        QPoint(x - 15 + self.perspective_depth, pos_y - height_px - self.perspective_depth),
+                        QPoint(x + 15 + self.perspective_depth, pos_y - height_px - self.perspective_depth),
+                        QPoint(x + 15, pos_y - height_px)
+                    ])
+
+                    # Боковая грань (параллелограмм)
+                    side_poly = QPolygon([
+                        QPoint(x + 15, pos_y - height_px),
+                        QPoint(x + 15 + self.perspective_depth, pos_y - height_px - self.perspective_depth),
+                        QPoint(x + 15 + self.perspective_depth, pos_y - self.perspective_depth),
+                        QPoint(x + 15, pos_y)
+                    ])
+
+                    # Рисуем боковую грань (самая темная)
+                    painter.setBrush(QBrush(much_darker_color))
+                    painter.setPen(QPen(much_darker_color, 1))
+                    painter.drawPolygon(side_poly)
+
+                    # Рисуем верхнюю грань (чуть темнее)
+                    painter.setBrush(QBrush(darker_color))
+                    painter.setPen(QPen(darker_color, 1))
+                    painter.drawPolygon(top_poly)
+
+                    # Рисуем основной прямоугольник
+                    painter.setBrush(QBrush(color))
+                    painter.setPen(QPen(color, 1))
+                    painter.drawRect(main_rect)
+
                     pos_y -= height_px
                 else:
-                    rect = QRect(x - 15, neg_y, 30, height_px)
-                    painter.drawRect(rect)
+                    # Основной прямоугольник (вниз от нулевой линии)
+                    main_rect = QRect(x - 15, neg_y, 30, height_px)
+
+                    # Боковая грань (параллелограмм)
+                    side_poly = QPolygon([
+                        QPoint(x + 15, neg_y),
+                        QPoint(x + 15 + self.perspective_depth, neg_y - self.perspective_depth),
+                        QPoint(x + 15 + self.perspective_depth, neg_y + height_px - self.perspective_depth),
+                        QPoint(x + 15, neg_y + height_px)
+                    ])
+
+                    # Верхняя грань (прямоугольник, а не параллелограмм)
+                    top_rect = QRect(x - 15, neg_y + height_px, 30, self.perspective_depth)
+
+                    # Рисуем боковую грань
+                    painter.setBrush(QBrush(much_darker_color))
+                    painter.setPen(QPen(much_darker_color, 1))
+                    painter.drawPolygon(side_poly)
+
+                    # Рисуем основной прямоугольник
+                    painter.setBrush(QBrush(color))
+                    painter.setPen(QPen(color, 1))
+                    painter.drawRect(main_rect)
+
                     neg_y += height_px
 
     def drawLabels(self, painter):
