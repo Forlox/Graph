@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QLabel)
 from PySide6.QtCore import Qt, Signal
 import math
-
+from Grid import format_value
 
 class GridMenu(QWidget):
     stepYChanged = Signal(float)
@@ -49,12 +49,15 @@ class GridMenu(QWidget):
             for i, point in enumerate(self.grid.points):
                 if i < len(results) and len(results[i]) > self.grid.functions.index(func):
                     val = results[i][self.grid.functions.index(func)]
-                    values.append(f"{val:.2f}" if val is not None else "undef")
+                    values.append(f"{val:.2f}" if val is not None else "*")
                 else:
                     values.append("undef")
 
             color = func["color"]
-            legendLines.append(f"<span style='color: {color.name()}'>{func['name']}: {', '.join(values)}</span>")
+            legendLines.append(
+                f"<span style='color: {color.name()}'>■</span> "
+                f"{func['func']}: {', '.join(values)}"
+            )
 
         self.legend_text.setText("<br>".join(legendLines))
 

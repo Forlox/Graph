@@ -4,6 +4,15 @@ from PySide6.QtCore import Qt, QRect, Signal, QPoint, QSize
 import math
 
 
+def format_value(val):
+    if val is None:
+        return "*"
+    formatted = f"{val:.2f}"
+    if formatted.endswith(".00"):
+        return formatted[:-3]
+    return formatted
+
+
 class Grid(QWidget):
     pointsProcessed = Signal()
 
@@ -22,12 +31,62 @@ class Grid(QWidget):
 
     @staticmethod
     def getFuncs():
-        return [
-            {"func": "4/(1-x)", "color": QColor(Qt.red), "name": "4/(1-x)"},
-            {"func": "x**2", "color": QColor(Qt.green), "name": "x²"},
-            {"func": "5*math.sin(x)", "color": QColor(Qt.blue), "name": "5*sin(x)"},
-            {"func": "math.log(abs(x)+1)", "color": QColor(Qt.magenta), "name": "log(|x|+1)"}
-        ]
+        color_map = {'red': Qt.red, 'green': Qt.green, 'blue': Qt.blue, 'cyan': Qt.cyan, 'magenta': Qt.magenta,
+                     'yellow': Qt.yellow, 'darkRed': Qt.darkRed, 'darkGreen': Qt.darkGreen, 'darkBlue': Qt.darkBlue,
+                     'darkCyan': Qt.darkCyan, 'darkMagenta': Qt.darkMagenta, 'darkYellow': Qt.darkYellow,
+                     'gray': Qt.gray, 'darkGray': Qt.darkGray, 'lightGray': Qt.lightGray, 'black': Qt.black,
+                     'white': Qt.white, 'transparent': Qt.transparent}
+        functions = []
+        try:
+            with open("Функции.txt", "r") as file:
+                content = file.read().strip()
+                if not content:
+                    return [
+                        {"func": "4/(1-x)", "color": QColor(Qt.red)},
+                        {"func": "x**2", "color": QColor(Qt.green)},
+                        {"func": "5*math.sin(x)", "color": QColor(Qt.blue)},
+                        {"func": "math.log(abs(x)+1)", "color": QColor(Qt.magenta)}
+                    ]
+
+                for func_part in content.split(','):
+                    func_part = func_part.strip()
+                    if not func_part:
+                        continue
+
+                    parts = func_part.rsplit(' ', 1)
+                    if len(parts) != 2:
+                        continue
+
+                    func_expr, color_name = parts
+
+                    if color_name not in color_map:
+                        continue
+
+                    if 'x' not in func_expr:
+                        continue
+
+                    functions.append({
+                        "func": func_expr.strip(),
+                        "color": QColor(color_map[color_name])
+                    })
+
+                if not functions:
+                    return [
+                        {"func": "4/(1-x)", "color": QColor(Qt.red)},
+                        {"func": "x**2", "color": QColor(Qt.green)},
+                        {"func": "5*math.sin(x)", "color": QColor(Qt.blue)},
+                        {"func": "math.log(abs(x)+1)", "color": QColor(Qt.magenta)}
+                    ]
+
+                return functions
+
+        except (FileNotFoundError, IOError):
+            return [
+                {"func": "4/(1-x)", "color": QColor(Qt.red)},
+                {"func": "x**2", "color": QColor(Qt.green)},
+                {"func": "5*math.sin(x)", "color": QColor(Qt.blue)},
+                {"func": "math.log(abs(x)+1)", "color": QColor(Qt.magenta)}
+            ]
 
     def setPoints(self, points_str):
         points = []
@@ -116,7 +175,7 @@ class Grid(QWidget):
         self.maxY = max_val
         self.minY = min_val
 
-        width = max(1, self.width() - self.border_left*2)
+        width = max(1, self.width() - self.border_left * 2)
         height = max(1, self.height() - self.border_right - self.padding_top - self.padding_bottom)
 
         # Позиция нулевой линии
@@ -148,7 +207,7 @@ class Grid(QWidget):
             while y >= self.padding_top:
                 painter.drawLine(self.border_left + self.perspective_depth, y - self.perspective_depth,
                                  self.border_left + width + self.perspective_depth, y - self.perspective_depth)
-                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, f"{step * self.stepY:.2f}")
+                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, format_value(step * self.stepY))
                 step += 1
                 y = zero_y - step * (height / (self.maxY - self.minY)) * self.stepY
                 painter.drawLine(self.border_left, y, self.border_left + self.perspective_depth,
@@ -164,7 +223,7 @@ class Grid(QWidget):
                     break
                 painter.drawLine(self.border_left + self.perspective_depth, y - self.perspective_depth,
                                  self.border_left + width + self.perspective_depth, y - self.perspective_depth)
-                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, f"{-step * self.stepY:.2f}")
+                painter.drawText(self.border_left - self.perspective_depth * 5, y + 5, format_value(-step * self.stepY))
                 step += 1
                 painter.drawLine(self.border_left, y, self.border_left + self.perspective_depth,
                                  y - self.perspective_depth)
@@ -185,8 +244,10 @@ class Grid(QWidget):
 
             # Сама нулевая линия
             painter.setPen(QPen(Qt.black, 2))
-            painter.drawLine(self.border_left + self.perspective_depth, zero_y - self.perspective_depth, self.border_left + width + self.perspective_depth, zero_y - self.perspective_depth)
-            painter.drawLine(self.border_left, zero_y, self.border_left + self.perspective_depth, zero_y - self.perspective_depth)
+            painter.drawLine(self.border_left + self.perspective_depth, zero_y - self.perspective_depth,
+                             self.border_left + width + self.perspective_depth, zero_y - self.perspective_depth)
+            painter.drawLine(self.border_left, zero_y, self.border_left + self.perspective_depth,
+                             zero_y - self.perspective_depth)
 
     def draw_functions(self, painter):
         results = self.calculate_functions()
@@ -297,4 +358,14 @@ class Grid(QWidget):
         painter.setPen(QPen(Qt.black, 1))
 
         for point, x in zip(self.points, x_positions):
-            painter.drawText(x - 15, y_pos, f"{point:.2f}")
+            painter.drawText(x - 15, y_pos, format_value(point))
+
+    def setFunctions(self, functions):
+        self.functions = []
+        for func in functions:
+            self.functions.append({
+                "func": func["func"],
+                "color": QColor(func["color"]),
+                "name": func["name"]
+            })
+        self.update()

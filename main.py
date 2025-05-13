@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self.adjustWindowSize()
 
     def adjustWindowSize(self):
-        self.resize(self.grid.sizeHint().width() + 350, 600)  # 350 - место для меню + отступы
+        self.resize(self.grid.sizeHint().width(), 600)
         self.setMinimumSize(self.grid.minimumSizeHint().width() + 350, 400)
 
 
