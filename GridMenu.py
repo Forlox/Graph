@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QLabel)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLineEdit, QLabel, QPushButton)
 from PySide6.QtCore import Qt, Signal
 import math
 from Grid import format_value
@@ -6,6 +6,7 @@ from Grid import format_value
 class GridMenu(QWidget):
     stepYChanged = Signal(float)
     pointsChanged = Signal(str)
+    refreshRequested = Signal()
 
     def __init__(self, grid):
         super().__init__()
@@ -27,6 +28,10 @@ class GridMenu(QWidget):
         self.step_input.textChanged.connect(self.emit_step)
         self.layout.addWidget(self.step_input)
 
+        self.refresh_button = QPushButton("Обновить функции")
+        self.refresh_button.clicked.connect(self.refresh_functions)
+        self.layout.addWidget(self.refresh_button)
+
         legend_label = QLabel("Легенда:")
         self.layout.addWidget(legend_label)
 
@@ -35,6 +40,10 @@ class GridMenu(QWidget):
         self.layout.addWidget(self.legend_text)
 
         self.setLayout(self.layout)
+        self.updateLegend()
+
+    def refresh_functions(self):
+        self.refreshRequested.emit()
         self.updateLegend()
 
     def updateLegend(self):
@@ -49,9 +58,9 @@ class GridMenu(QWidget):
             for i, point in enumerate(self.grid.points):
                 if i < len(results) and len(results[i]) > self.grid.functions.index(func):
                     val = results[i][self.grid.functions.index(func)]
-                    values.append(f"{val:.2f}" if val is not None else "*")
+                    values.append(f"{format_value(val)}" if val is not None else "*")
                 else:
-                    values.append("undef")
+                    values.append("*")
 
             color = func["color"]
             legendLines.append(

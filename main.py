@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.menu.stepYChanged.connect(self.grid.setYStep)
         self.menu.pointsChanged.connect(self.grid.setPoints)
         self.grid.pointsProcessed.connect(self.menu.updateLegend)
+        self.menu.refreshRequested.connect(self.refresh_functions)
 
         # Обновляем размер окна при изменении точек
         self.grid.pointsProcessed.connect(self.adjustWindowSize)
@@ -29,6 +30,11 @@ class MainWindow(QMainWindow):
         container.setLayout(mainLay)
         self.setCentralWidget(container)
         self.adjustWindowSize()
+
+    def refresh_functions(self):
+        self.grid.functions = self.grid.getFuncs()  # Перечитываем функции из файла
+        self.grid.update()  # Перерисовываем графики
+        self.menu.updateLegend()  # Обновляем легенду
 
     def adjustWindowSize(self):
         self.resize(self.grid.sizeHint().width(), 600)
