@@ -111,7 +111,7 @@ class ControlPanel(QWidget):
                         lambda v: self.update_camera_pos('x', v))
         self.add_slider(pos_layout, "Позиция Y:", -500, 500, self.scene.camera_pos.y,
                         lambda v: self.update_camera_pos('y', v))
-        self.add_slider(pos_layout, "Позиция Z:", 100, 1000, self.scene.camera_pos.z,
+        self.add_slider(pos_layout, "Позиция Z:", -500, 500, self.scene.camera_pos.z,
                         lambda v: self.update_camera_pos('z', v))
 
         pos_group.setLayout(pos_layout)
